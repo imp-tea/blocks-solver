@@ -244,6 +244,7 @@ function createPieceElement(shape, pieceIndex) {
     }
   
     pieceElement.addEventListener('mousedown', onPieceMouseDown);
+    pieceElement.addEventListener('touchstart', onPieceMouseDown);
     return pieceElement;
 }
 
