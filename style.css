@@ -1,0 +1,40 @@
+body {
+  margin: 0;
+  background-color: black;
+}
+
+html, body {
+  height: 100%; /* Ensure the body takes up the full height */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column; /* Stack canvas and container vertically */
+  overflow: hidden;
+}
+
+#scoreContainer {
+  color: white;
+  font-size: 30px;
+}
+
+#gridCanvas {
+  display: block;
+  background-color: black;
+  margin: 0 auto;
+}
+
+#piecesContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 25vh;
+  margin-top: 20px; /* Add some space between the grid and container */
+}
+
+.piece {
+  display: inline-block;
+  margin: 10px;
+  padding-top: -10%;
+  cursor: grab;
+  position: relative;
+}
