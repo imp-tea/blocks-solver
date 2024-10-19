@@ -251,43 +251,57 @@ function createPieceElement(shape, pieceIndex) {
 // Mouse and touch event handlers for piece dragging
 function onPieceMouseDown(e) {
   e.preventDefault();
+  let clientX, clientY;
+
   if (e.touches) {
-    e = e.touches[0]; // Handle touch event
+    clientX = e.touches[0].clientX;  // For touch events
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.pageX;  // For mouse events
+    clientY = e.pageY;
   }
+
   selectedPiece = e.currentTarget;
 
   // Calculate offset relative to the piece's current position on the screen
   const rect = selectedPiece.getBoundingClientRect();
-  offsetX = e.pageX - rect.left;
-  offsetY = e.pageY - rect.top;
+  offsetX = clientX - rect.left;
+  offsetY = clientY - rect.top;
 
   document.addEventListener('mousemove', onPieceMouseMove);
   document.addEventListener('mouseup', onPieceMouseUp);
   document.addEventListener('touchmove', onPieceMouseMove);  // Add touch support
   document.addEventListener('touchend', onPieceMouseUp);      // Add touch support
 }
-  
+
 function onPieceMouseMove(e) {
   e.preventDefault();
+  let clientX, clientY;
+
   if (e.touches) {
-    e = e.touches[0]; // Handle touch event
+    clientX = e.touches[0].clientX;  // For touch events
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.pageX;  // For mouse events
+    clientY = e.pageY;
   }
+
   selectedPiece.style.position = 'absolute';
   selectedPiece.style.zIndex = 1000;
 
-  selectedPiece.style.left = `${e.pageX - offsetX}px`;
-  selectedPiece.style.top = `${e.pageY - offsetY}px`;
+  selectedPiece.style.left = `${clientX - offsetX}px`;
+  selectedPiece.style.top = `${clientY - offsetY}px`;
 
   // ** Ghost Piece Logic
   const rect = canvas.getBoundingClientRect();
   if (
-    e.pageX >= rect.left &&
-    e.pageX <= rect.right &&
-    e.pageY >= rect.top &&
-    e.pageY <= rect.bottom
+    clientX >= rect.left &&
+    clientX <= rect.right &&
+    clientY >= rect.top &&
+    clientY <= rect.bottom
   ) {
-    const gridX = Math.floor(0.5 + (e.pageX - rect.left - offsetX) / cellSize);
-    const gridY = Math.floor(0.5 + (e.pageY - rect.top - offsetY) / cellSize);
+    const gridX = Math.floor(0.5 + (clientX - rect.left - offsetX) / cellSize);
+    const gridY = Math.floor(0.5 + (clientY - rect.top - offsetY) / cellSize);
 
     if (canPlaceShape(selectedPiece.shape, gridX, gridY, grid)) {
       ghostShape = selectedPiece.shape;
@@ -311,9 +325,16 @@ function onPieceMouseMove(e) {
 
 function onPieceMouseUp(e) {
   e.preventDefault();
-  if (e.touches) {
-    e = e.changedTouches[0]; // Handle touch event
+  let clientX, clientY;
+
+  if (e.changedTouches) {
+    clientX = e.changedTouches[0].clientX;  // For touch events
+    clientY = e.changedTouches[0].clientY;
+  } else {
+    clientX = e.pageX;  // For mouse events
+    clientY = e.pageY;
   }
+
   document.removeEventListener('mousemove', onPieceMouseMove);
   document.removeEventListener('mouseup', onPieceMouseUp);
   document.removeEventListener('touchmove', onPieceMouseMove);  // Remove touch support
@@ -321,10 +342,10 @@ function onPieceMouseUp(e) {
 
   const rect = canvas.getBoundingClientRect();
   if (
-    e.pageX >= rect.left &&
-    e.pageX <= rect.right &&
-    e.pageY >= rect.top &&
-    e.pageY <= rect.bottom
+    clientX >= rect.left &&
+    clientX <= rect.right &&
+    clientY >= rect.top &&
+    clientY <= rect.bottom
   ) {
     if (ghostShape && ghostX !== null && ghostY !== null) {
       const placementPoints = placeShape(ghostShape, ghostX, ghostY);
@@ -356,6 +377,7 @@ function onPieceMouseUp(e) {
   drawGrid();
   drawOccupiedCells();
 }
+
 
 // Draw the ghost piece
 function drawGhostPiece() {
