@@ -194,7 +194,7 @@ function drawOccupiedCells() {
   }
 }
 
-// Display pieces, optionally reusing existing ones
+// Ensure that pieces are displayed with edit buttons
 function displayPieces(reuse) {
   if (reuse) {
     const pieces = Array.from(piecesContainer.children).map(pieceElement => pieceElement.shape);
@@ -214,42 +214,209 @@ function displayPieces(reuse) {
   }
 }
 
-// Create a piece element
-function createPieceElement(shape, pieceIndex) {
-    const pieceElement = document.createElement('div');
-    pieceElement.classList.add('piece');
-    pieceElement.shape = shape;
-  
-    const pieceWidth = cellSize * shape[0].length;
-    const pieceHeight = cellSize * shape.length;
-    pieceElement.style.width = `${pieceWidth}px`;
-    pieceElement.style.height = `${pieceHeight}px`;
-  
-    let colors = ["#FF0000", "#00FF00", "#0000FF"];
-    let cellScale = Math.ceil(cellSize*0.9);
-    for (let y = 0; y < shape.length; y++) {
-      for (let x = 0; x < shape[y].length; x++) {
-        if (shape[y][x]) {
-          const block = document.createElement('div');
-          block.style.position = 'absolute';
-          block.style.width = `${cellScale}px`;
-          block.style.height = `${cellScale}px`;
-          block.style.left = `${x * cellScale}px`;
-          block.style.top = `${y * cellScale}px`;
-          block.style.backgroundColor = colors[pieceIndex];
-          block.style.border = '1px solid gray';
-          pieceElement.appendChild(block);
-        }
-      }
-    }
-  
-    pieceElement.addEventListener('mousedown', onPieceMouseDown);
-    pieceElement.addEventListener('touchstart', onPieceMouseDown);
-    return pieceElement;
+// Add event listeners to the canvas for toggling grid squares
+canvas.addEventListener('click', onGridClick);
+canvas.addEventListener('touchend', onGridClick);
+
+function onGridClick(e) {
+  e.preventDefault();
+
+  let clientX, clientY;
+  if (e.changedTouches) {
+    clientX = e.changedTouches[0].clientX;
+    clientY = e.changedTouches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+
+  const gridX = Math.floor(x / cellSize);
+  const gridY = Math.floor(y / cellSize);
+
+  if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
+    grid[gridY][gridX] = grid[gridY][gridX] ? 0 : 1;
+    drawGrid();
+    drawOccupiedCells();
+  }
 }
 
-// Mouse and touch event handlers for piece dragging
+// Modify createPieceElement to include an edit button
+function createPieceElement(shape, pieceIndex, cellScale) {
+  const pieceElement = document.createElement('div');
+  pieceElement.classList.add('piece');
+  pieceElement.shape = shape;
+
+  if (!cellScale) {
+    cellScale = Math.ceil(cellSize * 0.9);
+  }
+
+  const pieceWidth = cellScale * shape[0].length;
+  const pieceHeight = cellScale * shape.length;
+  pieceElement.style.width = `${pieceWidth}px`;
+  pieceElement.style.height = `${pieceHeight}px`;
+
+  let colors = ["#FF0000", "#00FF00", "#0000FF"];
+  let color = colors[pieceIndex] || '#FFFFFF'; // Default color for selection pieces
+  for (let y = 0; y < shape.length; y++) {
+    for (let x = 0; x < shape[y].length; x++) {
+      if (shape[y][x]) {
+        const block = document.createElement('div');
+        block.style.position = 'absolute';
+        block.style.width = `${cellScale}px`;
+        block.style.height = `${cellScale}px`;
+        block.style.left = `${x * cellScale}px`;
+        block.style.top = `${y * cellScale}px`;
+        block.style.backgroundColor = color;
+        block.style.border = '1px solid gray';
+        pieceElement.appendChild(block);
+      }
+    }
+  }
+
+  pieceElement.addEventListener('mousedown', onPieceMouseDown);
+  pieceElement.addEventListener('touchstart', onPieceMouseDown);
+
+  // Add edit button if pieceIndex >= 0
+  if (pieceIndex >= 0) {
+    const editButton = document.createElement('div');
+    editButton.classList.add('edit-button');
+    editButton.textContent = '✎'; // pencil icon
+    editButton.style.position = 'absolute';
+    editButton.style.top = '0px';
+    editButton.style.right = '0px';
+    editButton.style.width = '20px';
+    editButton.style.height = '20px';
+    editButton.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    editButton.style.textAlign = 'center';
+    editButton.style.cursor = 'pointer';
+    pieceElement.appendChild(editButton);
+
+    editButton.addEventListener('click', function(e) {
+      e.stopPropagation(); // prevent triggering drag
+      onPieceEditClick(e, pieceElement);
+    });
+  }
+
+  return pieceElement;
+}
+
+// Add onPieceEditClick function
+function onPieceEditClick(e, pieceElement) {
+  showPieceSelection(pieceElement);
+}
+
+// Add showPieceSelection function
+function showPieceSelection(pieceElement) {
+  // Create the overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'pieceSelectionOverlay';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  overlay.style.zIndex = '1000';
+  overlay.style.display = 'flex';
+  overlay.style.flexWrap = 'wrap';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  document.body.appendChild(overlay);
+
+  // Create a container for pieces
+  const selectionContainer = document.createElement('div');
+  selectionContainer.style.display = 'flex';
+  selectionContainer.style.flexWrap = 'wrap';
+  selectionContainer.style.justifyContent = 'center';
+  selectionContainer.style.maxWidth = '90%';
+  selectionContainer.style.maxHeight = '90%';
+  overlay.appendChild(selectionContainer);
+
+  // For each block, create a piece element
+  for (let i = 0; i < blocks.length; i++) {
+    const shape = blocks[i];
+    const blockElement = createPieceElement(shape, -1, 30); // Use -1 for default color, 30 for cellScale
+    blockElement.style.margin = '5px';
+    blockElement.style.position = 'relative';
+    blockElement.style.left = '0';
+    blockElement.style.top = '0';
+    blockElement.style.cursor = 'pointer';
+    selectionContainer.appendChild(blockElement);
+
+    blockElement.addEventListener('click', function() {
+      // Update the pieceElement's shape
+      pieceElement.shape = shape;
+      // Re-create the pieceElement's content
+      pieceElement.innerHTML = '';
+      // Re-add the edit button
+      const editButton = document.createElement('div');
+      editButton.classList.add('edit-button');
+      editButton.textContent = '✎';
+      editButton.style.position = 'absolute';
+      editButton.style.top = '0px';
+      editButton.style.right = '0px';
+      editButton.style.width = '20px';
+      editButton.style.height = '20px';
+      editButton.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+      editButton.style.textAlign = 'center';
+      editButton.style.cursor = 'pointer';
+      pieceElement.appendChild(editButton);
+      editButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        onPieceEditClick(e, pieceElement);
+      });
+
+      // Recreate the piece content
+      const shape = pieceElement.shape;
+      const pieceWidth = cellSize * shape[0].length;
+      const pieceHeight = cellSize * shape.length;
+      pieceElement.style.width = `${pieceWidth}px`;
+      pieceElement.style.height = `${pieceHeight}px`;
+
+      let colors = ["#FF0000", "#00FF00", "#0000FF"];
+      let pieceIndex = Array.from(piecesContainer.children).indexOf(pieceElement);
+      let color = colors[pieceIndex];
+      let cellScale = Math.ceil(cellSize * 0.9);
+      for (let y = 0; y < shape.length; y++) {
+        for (let x = 0; x < shape[y].length; x++) {
+          if (shape[y][x]) {
+            const block = document.createElement('div');
+            block.style.position = 'absolute';
+            block.style.width = `${cellScale}px`;
+            block.style.height = `${cellScale}px`;
+            block.style.left = `${x * cellScale}px`;
+            block.style.top = `${y * cellScale}px`;
+            block.style.backgroundColor = color;
+            block.style.border = '1px solid gray';
+            pieceElement.appendChild(block);
+          }
+        }
+      }
+
+      // Remove the overlay
+      overlay.remove();
+    });
+  }
+
+  // Add event listener to close overlay when clicking outside the selection container
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  });
+}
+
+// Modify the onPieceMouseDown function to prevent drag when clicking edit button
 function onPieceMouseDown(e) {
+  // Prevent drag if clicking on edit button
+  if (e.target.classList.contains('edit-button')) {
+    return;
+  }
+
   e.preventDefault();
   let clientX, clientY;
 
