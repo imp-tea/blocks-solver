@@ -247,61 +247,77 @@ function createPieceElement(shape, pieceIndex) {
     return pieceElement;
 }
 
-// Mouse event handlers for piece dragging
+// Mouse and touch event handlers for piece dragging
 function onPieceMouseDown(e) {
-    selectedPiece = e.currentTarget;
-  
-    // Calculate offset relative to the piece's current position on the screen
-    const rect = selectedPiece.getBoundingClientRect();
-    offsetX = e.pageX - rect.left;
-    offsetY = e.pageY - rect.top;
-  
-    document.addEventListener('mousemove', onPieceMouseMove);
-    document.addEventListener('mouseup', onPieceMouseUp);
+  e.preventDefault();
+  if (e.touches) {
+    e = e.touches[0]; // Handle touch event
+  }
+  selectedPiece = e.currentTarget;
+
+  // Calculate offset relative to the piece's current position on the screen
+  const rect = selectedPiece.getBoundingClientRect();
+  offsetX = e.pageX - rect.left;
+  offsetY = e.pageY - rect.top;
+
+  document.addEventListener('mousemove', onPieceMouseMove);
+  document.addEventListener('mouseup', onPieceMouseUp);
+  document.addEventListener('touchmove', onPieceMouseMove);  // Add touch support
+  document.addEventListener('touchend', onPieceMouseUp);      // Add touch support
 }
   
-  function onPieceMouseMove(e) {
-    selectedPiece.style.position = 'absolute';
-    selectedPiece.style.zIndex = 1000;
-  
-    selectedPiece.style.left = `${e.pageX - offsetX}px`;
-    selectedPiece.style.top = `${e.pageY - offsetY}px`;
-  
-    // ** Ghost Piece Logic
-    const rect = canvas.getBoundingClientRect();
-    if (
-      e.pageX >= rect.left &&
-      e.pageX <= rect.right &&
-      e.pageY >= rect.top &&
-      e.pageY <= rect.bottom
-    ) {
-      // Calculate grid position
-      const gridX = Math.floor(0.5 + (e.pageX - rect.left - offsetX) / cellSize);
-      const gridY = Math.floor(0.5 + (e.pageY - rect.top - offsetY) / cellSize);
-  
-      if (canPlaceShape(selectedPiece.shape, gridX, gridY, grid)) {
-        ghostShape = selectedPiece.shape;
-        ghostX = gridX;
-        ghostY = gridY;
-      } else {
-        ghostShape = null;
-        ghostX = null;
-        ghostY = null;
-      }
+function onPieceMouseMove(e) {
+  e.preventDefault();
+  if (e.touches) {
+    e = e.touches[0]; // Handle touch event
+  }
+  selectedPiece.style.position = 'absolute';
+  selectedPiece.style.zIndex = 1000;
+
+  selectedPiece.style.left = `${e.pageX - offsetX}px`;
+  selectedPiece.style.top = `${e.pageY - offsetY}px`;
+
+  // ** Ghost Piece Logic
+  const rect = canvas.getBoundingClientRect();
+  if (
+    e.pageX >= rect.left &&
+    e.pageX <= rect.right &&
+    e.pageY >= rect.top &&
+    e.pageY <= rect.bottom
+  ) {
+    const gridX = Math.floor(0.5 + (e.pageX - rect.left - offsetX) / cellSize);
+    const gridY = Math.floor(0.5 + (e.pageY - rect.top - offsetY) / cellSize);
+
+    if (canPlaceShape(selectedPiece.shape, gridX, gridY, grid)) {
+      ghostShape = selectedPiece.shape;
+      ghostX = gridX;
+      ghostY = gridY;
     } else {
       ghostShape = null;
       ghostX = null;
       ghostY = null;
     }
-  
-    // Redraw the grid to show or remove the ghost piece
-    drawGrid();
-    drawOccupiedCells();
+  } else {
+    ghostShape = null;
+    ghostX = null;
+    ghostY = null;
+  }
+
+  // Redraw the grid to show or remove the ghost piece
+  drawGrid();
+  drawOccupiedCells();
 }
 
 function onPieceMouseUp(e) {
+  e.preventDefault();
+  if (e.touches) {
+    e = e.changedTouches[0]; // Handle touch event
+  }
   document.removeEventListener('mousemove', onPieceMouseMove);
   document.removeEventListener('mouseup', onPieceMouseUp);
+  document.removeEventListener('touchmove', onPieceMouseMove);  // Remove touch support
+  document.removeEventListener('touchend', onPieceMouseUp);      // Remove touch support
+
   const rect = canvas.getBoundingClientRect();
   if (
     e.pageX >= rect.left &&
@@ -326,9 +342,6 @@ function onPieceMouseUp(e) {
       if (piecesContainer.children.length === 0) {
         displayPieces(false);
       }
-      //const pieces = Array.from(piecesContainer.children).map(pieceElement => pieceElement.shape);
-      //const result = findBestSequence(pieces, grid, standardWeights);
-      //displayResult(result);
     }
   }
   selectedPiece.style.position = 'relative';
@@ -657,3 +670,33 @@ function accessibilityScore(grid) {
   }
   return score;
 }
+
+// Add event listeners to buttons for computing and playing suggested moves
+document.getElementById('computeButton').addEventListener('click', function() {
+  const pieces = Array.from(piecesContainer.children).map(pieceElement => pieceElement.shape);
+  const result = findBestSequence(pieces, grid, standardWeights);
+  displayResult(result);
+});
+
+document.getElementById('playButton').addEventListener('click', function() {
+  for (let i = 0; i < suggestedMoves.length; i++) {
+    let move = suggestedMoves[i];
+    const placementPoints = placeShape(move[0], move[1], move[2]);
+    const { clearedLines, lineClearPoints } = checkAndClearLines();
+    let totalPoints = (placementPoints + lineClearPoints) * combo;
+    score += totalPoints;
+    if (clearedLines > 0) {
+      combo += 1;
+    } else {
+      combo = 1;
+    }
+  }
+  updateScoreDisplay();
+  drawGrid();
+  drawOccupiedCells();
+  displayPieces();
+  
+  const pieces = Array.from(piecesContainer.children).map(pieceElement => pieceElement.shape);
+  const result = findBestSequence(pieces, grid, standardWeights);
+  displayResult(result);
+});
